@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-
+using System.Linq;
 
 namespace FOVRecurse_Pseudo_2x_Resolution
 {
@@ -30,10 +30,10 @@ namespace FOVRecurse_Pseudo_2x_Resolution
         /// </summary>
         public int VisualRange { get; set; }
 
-        /// <summary>
-        /// List of points visible to the player
-        /// </summary>
-        public List<Point> VisiblePoints { get; private set; }  // Cells the player can see
+        private bool[,] subTilesVisibility;
+
+        private List<(int x, int y)> subTileIndexList =
+            new List<(int, int)> { (0, 0), (0, 1), (1, 0), (1, 1) };
 
         private Point player;
         public Point Player { get { return player; } set { player = value; } }
@@ -50,6 +50,22 @@ namespace FOVRecurse_Pseudo_2x_Resolution
             VisualRange = 5;
         }
 
+        /// <summary>
+        /// Returns the visibility of a sub-tile
+        /// Each main-tile has 4 sub-tiles
+        /// E.g.: main-tile (x: 13, y = 7) has 4 subtiles:
+        ///     - sub-tile (x: 26, y = 14)
+        ///     - sub-tile (x: 27, y = 14)
+        ///     - sub-tile (x: 26, y = 15)
+        ///     - sub-tile (x: 27, y = 15)
+        /// </summary>
+        /// <param name="x">sub-tile x position</param>
+        /// <param name="y">sub-tile y position</param>
+        /// <returns>True = visible / False = hidden</returns>
+        public bool IsSubTileVisible(int x, int y)
+        {
+            return subTilesVisibility[x, y];
+        }
 
         /// <summary>
         /// Move the player in the specified direction provided the cell is valid and empty
@@ -139,7 +155,9 @@ namespace FOVRecurse_Pseudo_2x_Resolution
         /// </summary>
         public void GetVisibleCells()
         {
-            VisiblePoints = new List<Point>();
+            subTilesVisibility = new bool[MapSize.Width * 2, MapSize.Height * 2];
+            ShowAllSubTiles(player.X, player.Y);
+
             foreach (int o in VisibleOctants)
                 ScanOctant(1, o, 1.0, 0.0);
 
@@ -175,19 +193,23 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                         {
                             if (map[x, y] == 1) //current cell blocked
                             {
-                                if (x - 1 >= 0 && map[x - 1, y] == 0) //prior cell within range AND open...
-                                                                      //...incremenet the depth, adjust the endslope and recurse
+                                ShowVisibleSubTilesOfSolidMainTile(x, y, pOctant);
+
+                                var hasTileOnLeft = x - 1 >= 0 && map[x - 1, y] == 0;
+                                if (hasTileOnLeft) //prior cell within range AND open...
+                                                   //...incremenet the depth, adjust the endslope and recurse
                                     ScanOctant(pDepth + 1, pOctant, pStartSlope, GetSlope(x - 0.5, y + 0.5, player.X, player.Y, false));
                             }
                             else
                             {
-
-                                if (x - 1 >= 0 && map[x - 1, y] == 1) //prior cell within range AND open...
-                                                                      //..adjust the startslope
+                                var hasWallOnLeft = x - 1 >= 0 && map[x - 1, y] == 1;
+                                if (hasWallOnLeft) //prior cell within range AND open...
+                                {                  //..adjust the startslope
                                     pStartSlope = GetSlope(x - 0.5, y - 0.5, player.X, player.Y, false);
-                            }
+                                }
 
-                            VisiblePoints.Add(new Point(x, y));
+                                ShowAllSubTiles(x, y);
+                            }
                         }
                         x++;
                     }
@@ -208,16 +230,22 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                         {
                             if (map[x, y] == 1)
                             {
-                                if (x + 1 < map.GetLength(0) && map[x + 1, y] == 0)
+                                ShowVisibleSubTilesOfSolidMainTile(x, y, pOctant);
+
+                                var hasTileOnRight = x + 1 < map.GetLength(0) && map[x + 1, y] == 0;
+                                if (hasTileOnRight)
                                     ScanOctant(pDepth + 1, pOctant, pStartSlope, GetSlope(x + 0.5, y + 0.5, player.X, player.Y, false));
                             }
                             else
                             {
-                                if (x + 1 < map.GetLength(0) && map[x + 1, y] == 1)
+                                var hasWallOnRight = x + 1 < map.GetLength(0) && map[x + 1, y] == 1;
+                                if (hasWallOnRight)
+                                {
                                     pStartSlope = -GetSlope(x + 0.5, y - 0.5, player.X, player.Y, false);
-                            }
+                                }
 
-                            VisiblePoints.Add(new Point(x, y));
+                                ShowAllSubTiles(x, y);
+                            }
                         }
                         x--;
                     }
@@ -234,22 +262,26 @@ namespace FOVRecurse_Pseudo_2x_Resolution
 
                     while (GetSlope(x, y, player.X, player.Y, true) <= pEndSlope)
                     {
-
                         if (GetVisDistance(x, y, player.X, player.Y) <= visrange2)
                         {
-
                             if (map[x, y] == 1)
                             {
-                                if (y - 1 >= 0 && map[x, y - 1] == 0)
+                                ShowVisibleSubTilesOfSolidMainTile(x, y, pOctant);
+
+                                var hasTileAbove = y - 1 >= 0 && map[x, y - 1] == 0;
+                                if (hasTileAbove)
                                     ScanOctant(pDepth + 1, pOctant, pStartSlope, GetSlope(x - 0.5, y - 0.5, player.X, player.Y, true));
                             }
                             else
                             {
-                                if (y - 1 >= 0 && map[x, y - 1] == 1)
+                                var hasWallAbove = y - 1 >= 0 && map[x, y - 1] == 1;
+                                if (hasWallAbove)
+                                {
                                     pStartSlope = -GetSlope(x + 0.5, y - 0.5, player.X, player.Y, true);
-                            }
+                                }
 
-                            VisiblePoints.Add(new Point(x, y));
+                                ShowAllSubTiles(x, y);
+                            }
                         }
                         y++;
                     }
@@ -266,22 +298,26 @@ namespace FOVRecurse_Pseudo_2x_Resolution
 
                     while (GetSlope(x, y, player.X, player.Y, true) >= pEndSlope)
                     {
-
                         if (GetVisDistance(x, y, player.X, player.Y) <= visrange2)
                         {
-
                             if (map[x, y] == 1)
                             {
-                                if (y + 1 < map.GetLength(1) && map[x, y + 1] == 0)
+                                ShowVisibleSubTilesOfSolidMainTile(x, y, pOctant);
+
+                                var hasTileBelow = y + 1 < map.GetLength(1) && map[x, y + 1] == 0;
+                                if (hasTileBelow)
                                     ScanOctant(pDepth + 1, pOctant, pStartSlope, GetSlope(x - 0.5, y + 0.5, player.X, player.Y, true));
                             }
                             else
                             {
-                                if (y + 1 < map.GetLength(1) && map[x, y + 1] == 1)
+                                var hasWallBelow = y + 1 < map.GetLength(1) && map[x, y + 1] == 1;
+                                if (hasWallBelow)
+                                {
                                     pStartSlope = GetSlope(x + 0.5, y + 0.5, player.X, player.Y, true);
-                            }
+                                }
 
-                            VisiblePoints.Add(new Point(x, y));
+                                ShowAllSubTiles(x, y);
+                            }
                         }
                         y--;
                     }
@@ -300,20 +336,24 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                     {
                         if (GetVisDistance(x, y, player.X, player.Y) <= visrange2)
                         {
-
                             if (map[x, y] == 1)
                             {
-                                if (x + 1 < map.GetLength(0) && map[x + 1, y] == 0)
+                                ShowVisibleSubTilesOfSolidMainTile(x, y, pOctant);
+
+                                var hasTileOnRight = x + 1 < map.GetLength(0) && map[x + 1, y] == 0;
+                                if (hasTileOnRight)
                                     ScanOctant(pDepth + 1, pOctant, pStartSlope, GetSlope(x + 0.5, y - 0.5, player.X, player.Y, false));
                             }
                             else
                             {
-                                if (x + 1 < map.GetLength(0)
-                                        && map[x + 1, y] == 1)
+                                var hasWallOnRight = x + 1 < map.GetLength(0) && map[x + 1, y] == 1;
+                                if (hasWallOnRight)
+                                {
                                     pStartSlope = GetSlope(x + 0.5, y + 0.5, player.X, player.Y, false);
-                            }
+                                }
 
-                            VisiblePoints.Add(new Point(x, y));
+                                ShowAllSubTiles(x, y);
+                            }
                         }
                         x--;
                     }
@@ -332,20 +372,23 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                     {
                         if (GetVisDistance(x, y, player.X, player.Y) <= visrange2)
                         {
-
                             if (map[x, y] == 1)
                             {
-                                if (x - 1 >= 0 && map[x - 1, y] == 0)
+                                ShowVisibleSubTilesOfSolidMainTile(x, y, pOctant);
+
+                                var hasTileOnLeft = x - 1 >= 0 && map[x - 1, y] == 0;
+                                if (hasTileOnLeft)
                                     ScanOctant(pDepth + 1, pOctant, pStartSlope, GetSlope(x - 0.5, y - 0.5, player.X, player.Y, false));
                             }
                             else
                             {
-                                if (x - 1 >= 0
-                                        && map[x - 1, y] == 1)
+                                var hasWallOnLeft = x - 1 >= 0 && map[x - 1, y] == 1;
+                                if (hasWallOnLeft)
+                                {
                                     pStartSlope = -GetSlope(x - 0.5, y + 0.5, player.X, player.Y, false);
+                                }
+                                ShowAllSubTiles(x, y);
                             }
-
-                            VisiblePoints.Add(new Point(x, y));
                         }
                         x++;
                     }
@@ -362,22 +405,26 @@ namespace FOVRecurse_Pseudo_2x_Resolution
 
                     while (GetSlope(x, y, player.X, player.Y, true) <= pEndSlope)
                     {
-
                         if (GetVisDistance(x, y, player.X, player.Y) <= visrange2)
                         {
-
                             if (map[x, y] == 1)
                             {
-                                if (y + 1 < map.GetLength(1) && map[x, y + 1] == 0)
+                                ShowVisibleSubTilesOfSolidMainTile(x, y, pOctant);
+
+                                var hasTileBelow = y + 1 < map.GetLength(1) && map[x, y + 1] == 0;
+                                if (hasTileBelow)
                                     ScanOctant(pDepth + 1, pOctant, pStartSlope, GetSlope(x + 0.5, y + 0.5, player.X, player.Y, true));
                             }
                             else
                             {
-                                if (y + 1 < map.GetLength(1) && map[x, y + 1] == 1)
+                                var hasWallBelow = y + 1 < map.GetLength(1) && map[x, y + 1] == 1;
+                                if (hasWallBelow)
+                                {
                                     pStartSlope = -GetSlope(x - 0.5, y + 0.5, player.X, player.Y, true);
-                            }
+                                }
 
-                            VisiblePoints.Add(new Point(x, y));
+                                ShowAllSubTiles(x, y);
+                            }
                         }
                         y--;
                     }
@@ -394,23 +441,27 @@ namespace FOVRecurse_Pseudo_2x_Resolution
 
                     while (GetSlope(x, y, player.X, player.Y, true) >= pEndSlope)
                     {
-
                         if (GetVisDistance(x, y, player.X, player.Y) <= visrange2)
                         {
-
                             if (map[x, y] == 1)
                             {
-                                if (y - 1 >= 0 && map[x, y - 1] == 0)
+                                ShowVisibleSubTilesOfSolidMainTile(x, y, pOctant);
+
+                                var hasTileAbove = y - 1 >= 0 && map[x, y - 1] == 0;
+                                if (hasTileAbove)
                                     ScanOctant(pDepth + 1, pOctant, pStartSlope, GetSlope(x + 0.5, y - 0.5, player.X, player.Y, true));
 
                             }
                             else
                             {
-                                if (y - 1 >= 0 && map[x, y - 1] == 1)
+                                var hasWallAbove = y - 1 >= 0 && map[x, y - 1] == 1;
+                                if (hasWallAbove)
+                                {
                                     pStartSlope = GetSlope(x - 0.5, y - 0.5, player.X, player.Y, true);
-                            }
+                                }
 
-                            VisiblePoints.Add(new Point(x, y));
+                                ShowAllSubTiles(x, y);
+                            }
                         }
                         y++;
                     }
@@ -432,6 +483,142 @@ namespace FOVRecurse_Pseudo_2x_Resolution
             if (pDepth < VisualRange & map[x, y] == 0)
                 ScanOctant(pDepth + 1, pOctant, pStartSlope, pEndSlope);
 
+        }
+
+        /// <summary>
+        /// Marks all sub-tiles of the specified main-tile as visible
+        /// </summary>
+        /// <param name="mainTileX">Main-tile X coordinates</param>
+        /// <param name="mainTileY">Main-tile Y coordinates</param>
+        private void ShowAllSubTiles(int mainTileX, int mainTileY)
+        {
+            ShowSubTiles(GetSubTilesOfMainTile(mainTileX, mainTileY));
+        }
+
+        /// <summary>
+        /// Marks the proper sub-tiles of the specified main-tile as visible
+        /// </summary>
+        /// <param name="mainTileX">Main-tile X coordinates</param>
+        /// <param name="mainTileY">Main-tile Y coordinates</param>
+        /// <param name="octant">
+        ///
+        ///    \ 1 | 2 /
+        ///   8 \  |  / 3
+        ///   -----+-----
+        ///   7 /  |  \ 4
+        ///    / 6 | 5 \
+        ///
+        ///  1 = NNW, 2 =NNE, 3=ENE, 4=ESE, 5=SSE, 6=SSW, 7=WSW, 8 = WNW
+        /// </param>
+        private void ShowVisibleSubTilesOfSolidMainTile(int mainTileX, int mainTileY, int octant)
+        {
+            var excludeCoords = new List<(int x, int y)>();
+            switch (octant)  // remove the corner in the octant direction (always occluded)
+            {
+                case 1: excludeCoords.Add((0, 0)); break;
+                case 2: excludeCoords.Add((1, 0)); break;
+                case 3: excludeCoords.Add((1, 0)); break;
+                case 4: excludeCoords.Add((1, 1)); break;
+                case 5: excludeCoords.Add((1, 1)); break;
+                case 6: excludeCoords.Add((0, 1)); break;
+                case 7: excludeCoords.Add((0, 1)); break;
+                case 8: excludeCoords.Add((0, 0)); break;
+            }
+
+            // when facing horizontally or vertically, remove the back side
+            if (player.X == mainTileX)
+            {
+                if (octant == 1 || octant == 2)
+                {
+                    excludeCoords.Add((0, 0));
+                    excludeCoords.Add((1, 0));
+                }
+                else
+                { // octants 5 || 6
+                    excludeCoords.Add((0, 1));
+                    excludeCoords.Add((1, 1));
+                }
+            }
+            else if (player.Y == mainTileY)
+            {
+                if (octant == 3 || octant == 4)
+                {
+                    excludeCoords.Add((1, 0));
+                    excludeCoords.Add((1, 1));
+                }
+                else
+                { // octants 7 || 8
+                    excludeCoords.Add((0, 0));
+                    excludeCoords.Add((0, 1));
+                }
+            }
+
+            // remove the visible back corner if occluded by other wall
+            var hasWallOnRight = mainTileX + 1 >= map.GetLength(0) || map[mainTileX + 1, mainTileY] == 1;
+            if (hasWallOnRight)
+            {
+                if (octant == 1 || octant == 8)
+                    excludeCoords.Add((1, 0));
+                else if (octant == 6 || octant == 7)
+                    excludeCoords.Add((1, 1));
+            }
+
+            var hasWallOnLeft = mainTileX - 1 < 0 || map[mainTileX - 1, mainTileY] == 1;
+            if (hasWallOnLeft)
+            {
+                if (octant == 2 || octant == 3)
+                    excludeCoords.Add((0, 0));
+                else if (octant == 4 || octant == 5)
+                    excludeCoords.Add((0, 1));
+            }
+
+            var hasWallOnTop = mainTileY - 1 < 0 || map[mainTileX, mainTileY - 1] == 1;
+            if (hasWallOnTop)
+            {
+                if (octant == 4 || octant == 5)
+                    excludeCoords.Add((1, 0));
+                else if (octant == 6 || octant == 7)
+                    excludeCoords.Add((0, 0));
+            }
+
+            var hasWallONBottom = mainTileY + 1 >= map.GetLength(1) || map[mainTileX, mainTileY + 1] == 1;
+            if (hasWallONBottom)
+            {
+                if (octant == 1 || octant == 8)
+                    excludeCoords.Add((0, 1));
+                else if (octant == 2 || octant == 3)
+                    excludeCoords.Add((1, 1));
+            }
+
+            var excludePoints = excludeCoords
+                .Select(coords => new Point((2 * mainTileX) + coords.x, (2 * mainTileY) + coords.y));
+
+            var partialIndexList = GetSubTilesOfMainTile(mainTileX, mainTileY)
+                .Where(point => !excludePoints.Contains(point)).ToList();
+
+            ShowSubTiles(partialIndexList);
+        }
+
+        /// <summary>
+        /// Sets sub-tiles as visible
+        /// </summary>
+        /// <param name="points">List of sub-tiles coordinates</param>
+        private void ShowSubTiles(List<Point> points)
+        {
+            points.ForEach(point => subTilesVisibility[point.X, point.Y] = true);
+        }
+
+        /// <summary>
+        /// Returns the sub-tiles coordinates for a given main-tile coordiantes
+        /// </summary>
+        /// <param name="mainTileX">Main-tile X coordinates</param>
+        /// <param name="mainTileY">Main-tile Y coordinates</param>
+        /// <returns>List of sub-tiles coordinates</returns>
+        public List<Point> GetSubTilesOfMainTile(int mainTileX, int mainTileY)
+        {
+            return subTileIndexList
+                .Select(subTile => new Point((2 * mainTileX) + subTile.x, (2 * mainTileY) + subTile.y))
+                .ToList();
         }
 
         /// <summary>

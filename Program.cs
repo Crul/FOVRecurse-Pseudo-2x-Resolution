@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 
@@ -127,25 +126,60 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                     string.Empty
                 }
                 .Select(line => $"\t{line}")
-            );
+            ) + Environment.NewLine;
 
             for (int y = 0; y < map.GetLength(1); y++)
             {
                 for (int x = 0; x < map.GetLength(0); x++)
                 {
-                    mapText += (x, y) == position
-                       ? "@@"
-                       : (
-                           !fov.VisiblePoints.Contains(new Point(x, y))
-                           ? "  "
-                           : (map[x, y] ? ".." : "##")
-                       );
+                    var tileTxt = GetTileText(map, fov, position, x, y);
+                    mapText += tileTxt;
                 }
                 mapText += Environment.NewLine;
             }
 
             Console.Clear();
             Console.Write(mapText);
+        }
+
+        /// <summary>
+        /// Returns the main-tile text based on the sub-tiles visibility and player position
+        /// </summary>
+        /// <returns>2 character string for each tile</returns>
+        private static string GetTileText(
+            bool[,] map, FOVRecurse fov, (int x, int y) position, int x, int y)
+        {
+            var isPlayerPosition = (x, y) == position;
+            if (isPlayerPosition)
+                return "@@";
+
+            var isEmptyTile = map[x, y];
+            var subTiles = fov.GetSubTilesOfMainTile(x, y);
+            if (isEmptyTile && subTiles.All(subTile => fov.IsSubTileVisible(subTile.X, subTile.Y)))
+                return "..";
+
+            var isTopLeftSubTileVisible = fov.IsSubTileVisible(subTiles[0].X, subTiles[0].Y);
+            var isBottomLeftSubTileVisible = fov.IsSubTileVisible(subTiles[1].X, subTiles[1].Y);
+            var isTopRightSubTileVisible = fov.IsSubTileVisible(subTiles[2].X, subTiles[2].Y);
+            var isBottomRightSubTileVisible = fov.IsSubTileVisible(subTiles[3].X, subTiles[3].Y);
+
+            var tileTxt = (
+                isTopLeftSubTileVisible && isBottomLeftSubTileVisible
+                ? "█"
+                : (
+                    isTopLeftSubTileVisible
+                    ? "▀" : (isBottomLeftSubTileVisible ? "▄" : " ")
+                )
+            ) + (
+                isTopRightSubTileVisible && isBottomRightSubTileVisible
+                ? "█"
+                : (
+                    isTopRightSubTileVisible
+                    ? "▀" : (isBottomRightSubTileVisible ? "▄" : " ")
+                )
+            );
+
+            return tileTxt;
         }
 
         /// <summary>
