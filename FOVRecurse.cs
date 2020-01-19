@@ -43,11 +43,16 @@ namespace FOVRecurse_Pseudo_2x_Resolution
         /// </summary>
         List<int> VisibleOctants = new List<int>() { 1, 2, 3, 4, 5, 6, 7, 8 };
 
-        public FOVRecurse(int mapWidth, int mapHeight)
+        private const double HACK_TO_BLOCK_DIAGONALS = 0.00001;
+
+        private double hackToBlockDiagonals = 0;
+
+        public FOVRecurse(int mapWidth, int mapHeight, bool visibleDiagonals = true)
         {
             MapSize = new Size(mapWidth, mapHeight);
             map = new int[MapSize.Width, MapSize.Height];
             VisualRange = 5;
+            hackToBlockDiagonals = visibleDiagonals ? 0 : HACK_TO_BLOCK_DIAGONALS;
         }
 
         /// <summary>
@@ -158,8 +163,38 @@ namespace FOVRecurse_Pseudo_2x_Resolution
             subTilesVisibility = new bool[MapSize.Width * 2, MapSize.Height * 2];
             ShowAllSubTiles(player.X, player.Y);
 
-            foreach (int o in VisibleOctants)
-                ScanOctant(1, o, 1.0, 0.0);
+            // checks needed in case of visibleDiagonals = false
+            if (player.Y > 0 && map[player.X, player.Y - 1] == 0)
+            {
+                ScanOctant(1, 1, 1.0, 0.0);
+                ScanOctant(1, 2, 1.0, 0.0);
+            }
+            else if (Point_Valid(player.X, player.Y - 1))
+                ShowVisibleSubTilesOfSolidMainTile(player.X, player.Y - 1, 1);
+
+            if (player.X < MapSize.Width - 1 && map[player.X + 1, player.Y] == 0)
+            {
+                ScanOctant(1, 3, 1.0, 0.0);
+                ScanOctant(1, 4, 1.0, 0.0);
+            }
+            else if (Point_Valid(player.X + 1, player.Y))
+                ShowVisibleSubTilesOfSolidMainTile(player.X + 1, player.Y, 3);
+
+            if (player.Y < MapSize.Height - 1 && map[player.X, player.Y + 1] == 0)
+            {
+                ScanOctant(1, 5, 1.0, 0.0);
+                ScanOctant(1, 6, 1.0, 0.0);
+            }
+            else if (Point_Valid(player.X, player.Y + 1))
+                ShowVisibleSubTilesOfSolidMainTile(player.X, player.Y + 1, 5);
+
+            if (player.X > 0 && map[player.X - 1, player.Y] == 0)
+            {
+                ScanOctant(1, 7, 1.0, 0.0);
+                ScanOctant(1, 8, 1.0, 0.0);
+            }
+            else if (Point_Valid(player.X - 1, player.Y))
+                ShowVisibleSubTilesOfSolidMainTile(player.X - 1, player.Y, 7);
 
         }
 
@@ -184,7 +219,7 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                     y = player.Y - pDepth;
                     if (y < 0) return;
 
-                    x = player.X - Convert.ToInt32((pStartSlope * Convert.ToDouble(pDepth)));
+                    x = player.X - (int)((pStartSlope * Convert.ToDouble(pDepth)));
                     if (x < 0) x = 0;
 
                     while (GetSlope(x, y, player.X, player.Y, false) >= pEndSlope)
@@ -205,7 +240,7 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                                 var hasWallOnLeft = x - 1 >= 0 && map[x - 1, y] == 1;
                                 if (hasWallOnLeft) //prior cell within range AND open...
                                 {                  //..adjust the startslope
-                                    pStartSlope = GetSlope(x - 0.5, y - 0.5, player.X, player.Y, false);
+                                    pStartSlope = GetSlope(x - 0.5 + hackToBlockDiagonals, y - 0.5, player.X, player.Y, false);
                                 }
 
                                 ShowAllSubTiles(x, y);
@@ -221,7 +256,7 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                     y = player.Y - pDepth;
                     if (y < 0) return;
 
-                    x = player.X + Convert.ToInt32((pStartSlope * Convert.ToDouble(pDepth)));
+                    x = player.X + (int)((pStartSlope * Convert.ToDouble(pDepth)));
                     if (x >= map.GetLength(0)) x = map.GetLength(0) - 1;
 
                     while (GetSlope(x, y, player.X, player.Y, false) <= pEndSlope)
@@ -241,7 +276,7 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                                 var hasWallOnRight = x + 1 < map.GetLength(0) && map[x + 1, y] == 1;
                                 if (hasWallOnRight)
                                 {
-                                    pStartSlope = -GetSlope(x + 0.5, y - 0.5, player.X, player.Y, false);
+                                    pStartSlope = -GetSlope(x + 0.5 - hackToBlockDiagonals, y - 0.5, player.X, player.Y, false);
                                 }
 
                                 ShowAllSubTiles(x, y);
@@ -257,7 +292,7 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                     x = player.X + pDepth;
                     if (x >= map.GetLength(0)) return;
 
-                    y = player.Y - Convert.ToInt32((pStartSlope * Convert.ToDouble(pDepth)));
+                    y = player.Y - (int)((pStartSlope * Convert.ToDouble(pDepth)));
                     if (y < 0) y = 0;
 
                     while (GetSlope(x, y, player.X, player.Y, true) <= pEndSlope)
@@ -277,7 +312,7 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                                 var hasWallAbove = y - 1 >= 0 && map[x, y - 1] == 1;
                                 if (hasWallAbove)
                                 {
-                                    pStartSlope = -GetSlope(x + 0.5, y - 0.5, player.X, player.Y, true);
+                                    pStartSlope = -GetSlope(x + 0.5, y - 0.5 + hackToBlockDiagonals, player.X, player.Y, true);
                                 }
 
                                 ShowAllSubTiles(x, y);
@@ -293,7 +328,7 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                     x = player.X + pDepth;
                     if (x >= map.GetLength(0)) return;
 
-                    y = player.Y + Convert.ToInt32((pStartSlope * Convert.ToDouble(pDepth)));
+                    y = player.Y + (int)((pStartSlope * Convert.ToDouble(pDepth)));
                     if (y >= map.GetLength(1)) y = map.GetLength(1) - 1;
 
                     while (GetSlope(x, y, player.X, player.Y, true) >= pEndSlope)
@@ -313,7 +348,7 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                                 var hasWallBelow = y + 1 < map.GetLength(1) && map[x, y + 1] == 1;
                                 if (hasWallBelow)
                                 {
-                                    pStartSlope = GetSlope(x + 0.5, y + 0.5, player.X, player.Y, true);
+                                    pStartSlope = GetSlope(x + 0.5, y + 0.5 - hackToBlockDiagonals, player.X, player.Y, true);
                                 }
 
                                 ShowAllSubTiles(x, y);
@@ -329,7 +364,7 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                     y = player.Y + pDepth;
                     if (y >= map.GetLength(1)) return;
 
-                    x = player.X + Convert.ToInt32((pStartSlope * Convert.ToDouble(pDepth)));
+                    x = player.X + (int)((pStartSlope * Convert.ToDouble(pDepth)));
                     if (x >= map.GetLength(0)) x = map.GetLength(0) - 1;
 
                     while (GetSlope(x, y, player.X, player.Y, false) >= pEndSlope)
@@ -349,7 +384,7 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                                 var hasWallOnRight = x + 1 < map.GetLength(0) && map[x + 1, y] == 1;
                                 if (hasWallOnRight)
                                 {
-                                    pStartSlope = GetSlope(x + 0.5, y + 0.5, player.X, player.Y, false);
+                                    pStartSlope = GetSlope(x + 0.5 - hackToBlockDiagonals, y + 0.5, player.X, player.Y, false);
                                 }
 
                                 ShowAllSubTiles(x, y);
@@ -365,7 +400,7 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                     y = player.Y + pDepth;
                     if (y >= map.GetLength(1)) return;
 
-                    x = player.X - Convert.ToInt32((pStartSlope * Convert.ToDouble(pDepth)));
+                    x = player.X - (int)((pStartSlope * Convert.ToDouble(pDepth)));
                     if (x < 0) x = 0;
 
                     while (GetSlope(x, y, player.X, player.Y, false) <= pEndSlope)
@@ -385,7 +420,7 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                                 var hasWallOnLeft = x - 1 >= 0 && map[x - 1, y] == 1;
                                 if (hasWallOnLeft)
                                 {
-                                    pStartSlope = -GetSlope(x - 0.5, y + 0.5, player.X, player.Y, false);
+                                    pStartSlope = -GetSlope(x - 0.5 + hackToBlockDiagonals, y + 0.5, player.X, player.Y, false);
                                 }
                                 ShowAllSubTiles(x, y);
                             }
@@ -400,7 +435,7 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                     x = player.X - pDepth;
                     if (x < 0) return;
 
-                    y = player.Y + Convert.ToInt32((pStartSlope * Convert.ToDouble(pDepth)));
+                    y = player.Y + (int)((pStartSlope * Convert.ToDouble(pDepth)));
                     if (y >= map.GetLength(1)) y = map.GetLength(1) - 1;
 
                     while (GetSlope(x, y, player.X, player.Y, true) <= pEndSlope)
@@ -420,7 +455,7 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                                 var hasWallBelow = y + 1 < map.GetLength(1) && map[x, y + 1] == 1;
                                 if (hasWallBelow)
                                 {
-                                    pStartSlope = -GetSlope(x - 0.5, y + 0.5, player.X, player.Y, true);
+                                    pStartSlope = -GetSlope(x - 0.5, y + 0.5 - hackToBlockDiagonals, player.X, player.Y, true);
                                 }
 
                                 ShowAllSubTiles(x, y);
@@ -436,7 +471,7 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                     x = player.X - pDepth;
                     if (x < 0) return;
 
-                    y = player.Y - Convert.ToInt32((pStartSlope * Convert.ToDouble(pDepth)));
+                    y = player.Y - (int)((pStartSlope * Convert.ToDouble(pDepth)));
                     if (y < 0) y = 0;
 
                     while (GetSlope(x, y, player.X, player.Y, true) >= pEndSlope)
@@ -457,7 +492,7 @@ namespace FOVRecurse_Pseudo_2x_Resolution
                                 var hasWallAbove = y - 1 >= 0 && map[x, y - 1] == 1;
                                 if (hasWallAbove)
                                 {
-                                    pStartSlope = GetSlope(x - 0.5, y - 0.5, player.X, player.Y, true);
+                                    pStartSlope = GetSlope(x - 0.5, y - 0.5 + hackToBlockDiagonals, player.X, player.Y, true);
                                 }
 
                                 ShowAllSubTiles(x, y);

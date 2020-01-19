@@ -84,7 +84,7 @@ namespace FOVRecurse_Pseudo_2x_Resolution
         /// <returns>FOVRecurse instance</returns>
         private static FOVRecurse GetFOV(bool[,] map)
         {
-            var fov = new FOVRecurse(map.GetLength(0), map.GetLength(1));
+            var fov = new FOVRecurse(map.GetLength(0), map.GetLength(1), visibleDiagonals: false);
             for (int x = 0; x < map.GetLength(0); x++)
                 for (int y = 0; y < map.GetLength(1); y++)
                     fov.Point_Set(x, y, map[x, y] ? 0 : 1);

@@ -78,4 +78,4 @@ Regarding the visibility through touching-corners like this one:
 ..  ####
 ```
 
-I've found an ugly hack to disable them (see [branch hack-to-block-diagonals](https://github.com/Crul/FOVRecurse-Pseudo-2x-Resolution/tree/hack-to-block-diagonals)). I'm sure there are better ways to do it. I haven't put too much time in that because I like how it works when you can see through corners like that one.
+I've found an ugly hack to disable them (see this branch). I'm sure there are better ways to do it. I haven't put too much time in that because I like how it works when you can see through corners like that one.
