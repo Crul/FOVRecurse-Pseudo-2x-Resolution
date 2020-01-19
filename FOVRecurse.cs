@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Drawing;
 
 
-namespace map
+namespace FOVRecurse_Pseudo_2x_Resolution
 {
 
     /// <summary>
@@ -43,9 +43,9 @@ namespace map
         /// </summary>
         List<int> VisibleOctants = new List<int>() { 1, 2, 3, 4, 5, 6, 7, 8 };
 
-        public FOVRecurse()
+        public FOVRecurse(int mapWidth, int mapHeight)
         {
-            MapSize = new Size(100, 100);
+            MapSize = new Size(mapWidth, mapHeight);
             map = new int[MapSize.Width, MapSize.Height];
             VisualRange = 5;
         }
@@ -63,7 +63,22 @@ namespace map
             {
                 player.Offset(pX, pY);
                 GetVisibleCells();
-                playerMoved();
+                playerMoved?.Invoke();
+            }
+        }
+
+        /// <summary>
+        /// Move the player to the specified position provided the cell is valid and empty
+        /// </summary>
+        /// <param name="pX">X offset</param>
+        /// <param name="pY">Y Offset</param>
+        public void setPlayer(int x, int y)
+        {
+            if (Point_Valid(x, y) && Point_Get(x, y) == 0)
+            {
+                player = new Point(x, y);
+                GetVisibleCells();
+                playerMoved?.Invoke();
             }
         }
 
@@ -170,9 +185,9 @@ namespace map
                                 if (x - 1 >= 0 && map[x - 1, y] == 1) //prior cell within range AND open...
                                                                       //..adjust the startslope
                                     pStartSlope = GetSlope(x - 0.5, y - 0.5, player.X, player.Y, false);
-
-                                VisiblePoints.Add(new Point(x, y));
                             }
+
+                            VisiblePoints.Add(new Point(x, y));
                         }
                         x++;
                     }
@@ -200,9 +215,9 @@ namespace map
                             {
                                 if (x + 1 < map.GetLength(0) && map[x + 1, y] == 1)
                                     pStartSlope = -GetSlope(x + 0.5, y - 0.5, player.X, player.Y, false);
-
-                                VisiblePoints.Add(new Point(x, y));
                             }
+
+                            VisiblePoints.Add(new Point(x, y));
                         }
                         x--;
                     }
@@ -232,9 +247,9 @@ namespace map
                             {
                                 if (y - 1 >= 0 && map[x, y - 1] == 1)
                                     pStartSlope = -GetSlope(x + 0.5, y - 0.5, player.X, player.Y, true);
-
-                                VisiblePoints.Add(new Point(x, y));
                             }
+
+                            VisiblePoints.Add(new Point(x, y));
                         }
                         y++;
                     }
@@ -264,9 +279,9 @@ namespace map
                             {
                                 if (y + 1 < map.GetLength(1) && map[x, y + 1] == 1)
                                     pStartSlope = GetSlope(x + 0.5, y + 0.5, player.X, player.Y, true);
-
-                                VisiblePoints.Add(new Point(x, y));
                             }
+
+                            VisiblePoints.Add(new Point(x, y));
                         }
                         y--;
                     }
@@ -296,9 +311,9 @@ namespace map
                                 if (x + 1 < map.GetLength(0)
                                         && map[x + 1, y] == 1)
                                     pStartSlope = GetSlope(x + 0.5, y + 0.5, player.X, player.Y, false);
-
-                                VisiblePoints.Add(new Point(x, y));
                             }
+
+                            VisiblePoints.Add(new Point(x, y));
                         }
                         x--;
                     }
@@ -328,9 +343,9 @@ namespace map
                                 if (x - 1 >= 0
                                         && map[x - 1, y] == 1)
                                     pStartSlope = -GetSlope(x - 0.5, y + 0.5, player.X, player.Y, false);
-
-                                VisiblePoints.Add(new Point(x, y));
                             }
+
+                            VisiblePoints.Add(new Point(x, y));
                         }
                         x++;
                     }
@@ -360,9 +375,9 @@ namespace map
                             {
                                 if (y + 1 < map.GetLength(1) && map[x, y + 1] == 1)
                                     pStartSlope = -GetSlope(x - 0.5, y + 0.5, player.X, player.Y, true);
-
-                                VisiblePoints.Add(new Point(x, y));
                             }
+
+                            VisiblePoints.Add(new Point(x, y));
                         }
                         y--;
                     }
@@ -393,9 +408,9 @@ namespace map
                             {
                                 if (y - 1 >= 0 && map[x, y - 1] == 1)
                                     pStartSlope = GetSlope(x - 0.5, y - 0.5, player.X, player.Y, true);
-
-                                VisiblePoints.Add(new Point(x, y));
                             }
+
+                            VisiblePoints.Add(new Point(x, y));
                         }
                         y++;
                     }
