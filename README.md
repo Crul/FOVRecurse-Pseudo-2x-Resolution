@@ -22,6 +22,12 @@ The motivation behind it is that I wanted to avoid the blocks with walls in oppo
 Note: tiles are 2 characters wide \
 ![Demo running](imgs/demo.gif)
 
+## Other approachs
+
+From a [reddit comment](https://www.reddit.com/r/roguelikedev/comments/er3nr1/pseudo_2x_resolution_fov_using_recursive/ff1cb54/) by [aotdev (Age of Transcendence)](https://www.reddit.com/user/aotdev):
+
+> I tackled this problem at the presentation level, implementing a custom fog-of-war shader. [Here is a video that shows it](https://www.youtube.com/watch?v=AlqCzoffPp8). Instead of running FoV in the subcells, I just reveal the subcells that are adjacent to a visible cell. It's super simple and no hacks are needed.
+
 ## Implementation
 
 For a map of NxM (main-)tiles we run the algorithm as explained in the RogueBasin articles with the only difference of, when setting the visibility of a main-tile (in NxM coordinates) we calculate 4 visibilities, one for each sub-tile (in 2*N x 2*M coordinates):
